@@ -108,10 +108,6 @@ parts:
 
       python3 external/fetch_sources.py
 
-      # Fix surfaceless platform: use EGL_OPENGL_BIT for desktop GL contexts
-      # instead of EGL_OPENGL_ES_BIT which causes EGL_BAD_MATCH on eglCreateContext.
-      python3 "${SNAPCRAFT_PROJECT_DIR}/patches/fix_surfaceless_gl.py"
-
       mkdir build && cd build
 
       # Different archs need different buildflags; only set arch flags

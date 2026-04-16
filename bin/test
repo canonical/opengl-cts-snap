@@ -27,9 +27,9 @@ if [ ${#ARGS[@]} -eq 0 ]; then
     echo "                      nvidia -> nouveau (open-source; max OpenGL 4.3)"
     echo ""
     echo "Examples:"
-    echo "  opengl-cts.test --deqp-case=KHR-GL46.info.build"
+    echo "  opengl-cts.test --deqp-case=KHR-GL46.info.vendor"
     echo "  opengl-cts.test --caselist=data/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-main.txt"
-    echo "  opengl-cts.test --headless --vendor=intel KHR-GL46.info.build"
+    echo "  opengl-cts.test --headless --vendor=intel KHR-GL46.info.vendor"
     exit 1
 fi
 
