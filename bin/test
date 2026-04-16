@@ -1,0 +1,105 @@
+#!/bin/bash
+
+HEADLESS=0
+VENDOR=""
+ARGS=()
+
+for arg in "$@"; do
+    if [ "$arg" = "--headless" ]; then
+        HEADLESS=1
+    elif [[ "$arg" == --vendor=* ]]; then
+        VENDOR="${arg#--vendor=}"
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+if [ ${#ARGS[@]} -eq 0 ]; then
+    echo "Usage: opengl-cts.test [--headless] [--vendor=intel|amd|nvidia] <test-spec>"
+    echo ""
+    echo "  --headless        Run without a display using EGL surfaceless + FBO rendering"
+    echo "                    (hardware-accelerated; requires gpu-2404 content interface)"
+    echo "  --vendor=<name>   Set MESA_LOADER_DRIVER_OVERRIDE to prefer a specific GPU vendor."
+    echo "                    On multi-GPU systems Mesa may otherwise pick a low-capability"
+    echo "                    device.  Note: selects by driver, not by specific device node."
+    echo "                      intel  -> iris"
+    echo "                      amd    -> radeonsi"
+    echo "                      nvidia -> nouveau (open-source; max OpenGL 4.3)"
+    echo ""
+    echo "Examples:"
+    echo "  opengl-cts.test --deqp-case=KHR-GL46.info.build"
+    echo "  opengl-cts.test --caselist=data/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-main.txt"
+    echo "  opengl-cts.test --headless --vendor=intel KHR-GL46.info.build"
+    exit 1
+fi
+
+GPU_WRAPPER="${SNAP}/gpu-2404/bin/gpu-2404-provider-wrapper"
+
+if [ "$HEADLESS" = "1" ]; then
+    # EGL surfaceless: Mesa opens the DRM device directly, loading the hardware
+    # DRI driver (iris, radeonsi, etc.) without needing a display server.
+    # FBO surface type means glcts renders offscreen rather than to a window.
+    export EGL_PLATFORM=surfaceless
+    export DISPLAY=
+    export WAYLAND_DISPLAY=
+    SURFACE_ARGS=(--deqp-surface-type=fbo)
+
+    # On multi-GPU systems Mesa may pick a low-capability device by default.
+    # --vendor sets MESA_LOADER_DRIVER_OVERRIDE so Mesa loads the right driver.
+    case "$VENDOR" in
+        intel)  export MESA_LOADER_DRIVER_OVERRIDE=iris ;;
+        amd)    export MESA_LOADER_DRIVER_OVERRIDE=radeonsi ;;
+        nvidia) export MESA_LOADER_DRIVER_OVERRIDE=nouveau ;;
+        "")     ;;
+        *)      echo "Error: unknown --vendor '${VENDOR}' (use intel, amd, or nvidia)" >&2; exit 1 ;;
+    esac
+
+    # glcts dlopen's the unversioned 'libEGL.so', but gpu-2404 only ships
+    # 'libEGL.so.1'. Create a symlink in a temp dir and prepend it to the path.
+    case "${SNAP_ARCH}" in
+        amd64) ARCH_TRIPLE=x86_64-linux-gnu ;;
+        arm64) ARCH_TRIPLE=aarch64-linux-gnu ;;
+        *)     ARCH_TRIPLE="${SNAP_ARCH}-linux-gnu" ;;
+    esac
+    _EGL_TMPDIR=$(mktemp -d)
+    ln -sf "${SNAP}/gpu-2404/usr/lib/${ARCH_TRIPLE}/libEGL.so.1" "${_EGL_TMPDIR}/libEGL.so"
+    # Prepend snap's staged libs so iris_dri.so finds libelf, libzstd, libdrm, libexpat
+    # from within the snap rather than falling back to core24 (which AppArmor denies).
+    export LD_LIBRARY_PATH="${_EGL_TMPDIR}:${SNAP}/usr/lib/${ARCH_TRIPLE}:${LD_LIBRARY_PATH:-}"
+    trap "rm -rf ${_EGL_TMPDIR}" EXIT
+else
+    SURFACE_ARGS=()
+fi
+
+# Create a working directory for test results
+WORK_DIR="${HOME}/.opengl-cts"
+mkdir -p "${WORK_DIR}"
+
+# glcts resolves data paths relative to CWD, so run from the data root.
+cd "${SNAP}/usr/share/opengl-cts"
+
+set -- "${ARGS[@]}"
+
+GPU_CMD=()
+if [ -x "${GPU_WRAPPER}" ]; then
+    GPU_CMD=("${GPU_WRAPPER}")
+fi
+
+if [[ "$1" == --caselist=* ]]; then
+    CASELIST_PATH="${1#--caselist=}"
+    CASELIST_FULL="${SNAP}/usr/share/opengl-cts/${CASELIST_PATH}"
+    "${GPU_CMD[@]}" "${SNAP}/usr/bin/glcts" \
+        "${SURFACE_ARGS[@]}" \
+        --deqp-caselist-file="${CASELIST_FULL}" \
+        --deqp-log-filename="${WORK_DIR}/$(basename "${CASELIST_PATH}" .txt).qpa"
+elif [[ "$1" == --deqp-case=* ]]; then
+    "${GPU_CMD[@]}" "${SNAP}/usr/bin/glcts" \
+        "${SURFACE_ARGS[@]}" \
+        "$1" \
+        --deqp-log-filename="${WORK_DIR}/TestResults.qpa"
+else
+    "${GPU_CMD[@]}" "${SNAP}/usr/bin/glcts" \
+        "${SURFACE_ARGS[@]}" \
+        --deqp-case="$1" \
+        --deqp-log-filename="${WORK_DIR}/TestResults.qpa"
+fi
