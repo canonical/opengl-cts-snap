@@ -60,12 +60,14 @@ parts:
     plugin: nil
     stage-packages:
       - mesa-utils
+      - mesa-utils-bin
       - libgl1
       - libx11-6
       - libxcb1
       - libxext6
     stage:
       - usr/bin/glxinfo
+      - usr/bin/glxinfo.x86_64-linux-gnu
 
   opengl-cts:
     plugin: nil
@@ -103,6 +105,7 @@ parts:
       - libffi8
       - libpciaccess0
       - libbsd0
+      - libegl-dev
     override-build: |
       set -eux
 
