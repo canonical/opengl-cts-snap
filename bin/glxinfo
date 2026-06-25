@@ -1,13 +1,21 @@
 #!/bin/bash
 
-# Set up GL libraries from gpu-2404 content interface
-if [ -d "${SNAP}/gpu-2404" ]; then
-    case "${SNAP_ARCH}" in
-        amd64) GPU_ARCH=x86_64;  ARCH_TRIPLE=x86_64-linux-gnu ;;
-        arm64) GPU_ARCH=aarch64; ARCH_TRIPLE=aarch64-linux-gnu ;;
-        *)     GPU_ARCH="${SNAP_ARCH}"; ARCH_TRIPLE="${SNAP_ARCH}-linux-gnu" ;;
-    esac
-    export LD_LIBRARY_PATH="${SNAP}/gpu-2404/usr/lib/${ARCH_TRIPLE}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-fi
+case "${SNAP_ARCH}" in
+    amd64) ARCH_TRIPLE=x86_64-linux-gnu ;;
+    arm64) ARCH_TRIPLE=aarch64-linux-gnu ;;
+    *)     ARCH_TRIPLE="${SNAP_ARCH}-linux-gnu" ;;
+esac
 
-exec "${SNAP}/usr/bin/glxinfo" "$@"
+# Include the snap's own staged libs (libGL, libX11, etc.) and the
+# gpu-2404 content interface libs so the right drivers are found.
+export LD_LIBRARY_PATH="\
+${SNAP}/usr/lib/${ARCH_TRIPLE}:\
+${SNAP}/usr/lib:\
+${SNAP}/gpu-2404/usr/lib/${ARCH_TRIPLE}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+GPU_WRAPPER="${SNAP}/gpu-2404/bin/gpu-2404-provider-wrapper"
+if [ -x "${GPU_WRAPPER}" ]; then
+    exec "${GPU_WRAPPER}" "${SNAP}/usr/bin/glxinfo" "$@"
+else
+    exec "${SNAP}/usr/bin/glxinfo" "$@"
+fi

@@ -68,6 +68,26 @@ parts:
     stage:
       - usr/bin/glxinfo*
 
+  gl-runtime-libs:
+    plugin: nil
+    stage-packages:
+      - libpng16-16t64
+      - libelf1t64
+      - libzstd1
+      - liblzma5
+      - libdrm2
+      - libexpat1
+      - libstdc++6
+      - libgcc-s1
+      - zlib1g
+      - libffi8
+      - libpciaccess0
+      - libbsd0
+      - libmd0
+      - libedit2
+      - libtinfo6
+      - libegl-dev
+
   opengl-cts:
     plugin: nil
     source: https://github.com/KhronosGroup/VK-GL-CTS.git
@@ -92,19 +112,6 @@ parts:
       - python3-lxml
       - libxcb1-dev
       - libx11-dev
-    stage-packages:
-      - libpng16-16t64
-      - libelf1
-      - libzstd1
-      - libdrm2
-      - libexpat1
-      - libstdc++6
-      - libgcc-s1
-      - zlib1g
-      - libffi8
-      - libpciaccess0
-      - libbsd0
-      - libegl-dev
     override-build: |
       set -eux
 
