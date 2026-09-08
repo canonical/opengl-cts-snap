@@ -6,16 +6,21 @@ case "${SNAP_ARCH}" in
     *)     ARCH_TRIPLE="${SNAP_ARCH}-linux-gnu" ;;
 esac
 
-# Include the snap's own staged libs (libGL, libX11, etc.) and the
+# Include the snap's own staged libs (libGL, libEGL, etc.) and the
 # gpu-2404 content interface libs so the right drivers are found.
 export LD_LIBRARY_PATH="\
 ${SNAP}/usr/lib/${ARCH_TRIPLE}:\
 ${SNAP}/usr/lib:\
 ${SNAP}/gpu-2404/usr/lib/${ARCH_TRIPLE}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
+# Query EGL the same way the CTS runs its tests: surfaceless, no display
+# server required. This lets eglinfo work headlessly, unlike glxinfo which
+# requires a running X server.
+export EGL_PLATFORM="${EGL_PLATFORM:-surfaceless}"
+
 GPU_WRAPPER="${SNAP}/gpu-2404/bin/gpu-2404-provider-wrapper"
 if [ -x "${GPU_WRAPPER}" ]; then
-    exec "${GPU_WRAPPER}" "${SNAP}/usr/bin/glxinfo" "$@"
+    exec "${GPU_WRAPPER}" "${SNAP}/usr/bin/eglinfo" "$@"
 else
-    exec "${SNAP}/usr/bin/glxinfo" "$@"
+    exec "${SNAP}/usr/bin/eglinfo" "$@"
 fi
