@@ -30,12 +30,11 @@ apps:
       - gpu-2404
   list-tests:
     command: list_tests
-  glxinfo:
-    command: glxinfo
+  eglinfo:
+    command: eglinfo
     plugs:
       - opengl
       - gpu-2404
-      - x11
 
 parts:
   test-conformance:
@@ -50,23 +49,24 @@ parts:
     stage:
       - list_tests
 
-  glxinfo-wrapper:
+  eglinfo-wrapper:
     source: bin/
     plugin: dump
     stage:
-      - glxinfo
+      - eglinfo
 
-  glxinfo-bin:
+  eglinfo-bin:
     plugin: nil
     stage-packages:
       - mesa-utils
       - mesa-utils-bin
       - libgl1
+      - libegl1
       - libx11-6
       - libxcb1
       - libxext6
     stage:
-      - usr/bin/glxinfo*
+      - usr/bin/eglinfo*
 
   gl-runtime-libs:
     plugin: nil
